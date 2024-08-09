@@ -1569,9 +1569,13 @@ resource "aws_autoscaling_group_tag" "aws_node_termination_handler" {
 resource "aws_cloudwatch_event_rule" "aws_node_termination_handler" {
   for_each = { for k, v in local.aws_node_termination_handler_events : k => v if var.enable_aws_node_termination_handler }
 
-  name_prefix   = "NTH-${each.value.name}-"
-  description   = each.value.description
-  event_pattern = jsonencode(each.value.event_pattern)
+  name_prefix = "NTH-${each.value.name}-"
+  description = each.value.description
+  event_pattern = jsonencode(merge(each.value.event_pattern, {
+    detail = {
+      AutoScalingGroupName = [for i in var.aws_node_termination_handler_asg_arns : replace(i, "/^.*:autoScalingGroupName//", "")]
+    }
+  }))
 
   tags = merge(
     { "ClusterName" : var.cluster_name },
@@ -2931,7 +2935,11 @@ resource "aws_cloudwatch_event_rule" "karpenter" {
 
   name_prefix   = "Karpenter-${each.value.name}-"
   description   = each.value.description
-  event_pattern = jsonencode(each.value.event_pattern)
+  event_pattern = jsonencode(merge(each.value.event_pattern, {
+    detail = {
+      AutoScalingGroupName = [for i in var.aws_node_termination_handler_asg_arns : replace(i, "/^.*:autoScalingGroupName//", "")]
+    }
+  }))
 
   tags = merge(
     { "ClusterName" : var.cluster_name },
